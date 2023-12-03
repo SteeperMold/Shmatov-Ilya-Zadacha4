@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../static/index.css">
+    <title>Приложение-планировщик</title>
+</head>
+<body>
+
+<form method="post" action="/" style="text-align: center">
+    <h1>Для получения расписания пролетов, заполните все поля</h1>
+    <div class="input-block">
+        <label for="lat">Широта: </label>
+        <input id="lat" type="text" name="lat-input">
+    </div>
+    <div class="input-block">
+        <label for="lon">Долгота: </label>
+        <input id="lon" type="text" name="lon-input">
+    </div>
+    <div class="input-block">
+        <label for="alt">Высота над уровнем моря (в метрах): </label>
+        <input id="alt" type="number" name="alt-input">
+    </div>
+    <div class="input-block">
+        <label for="min-elevation">Горизонт (минимальное возвышение спутника): </label>
+        <input id="min-elevation" type="text" name="min-elevation-input">
+    </div>
+    <div class="input-block">
+        <label for="min-apogee">Минимальная кульминация: </label>
+        <input id="min-apogee" type="text" name="min-apogee-input">
+    </div>
+    <div class="input-block">
+        <label for="start-time">Время начала наблюдения (UTC): </label>
+        <input id="start-time" type="datetime-local" name="start-time-input">
+    </div>
+    <div class="input-block">
+        <label for="duration">Длительность наблюдения (в часах): </label>
+        <input id="duration" type="text" name="duration-input">
+    </div>
+
+    <button type="submit">Получить расписание →</button>
+</form>
+
+{% if passes %}
+<table>
+    <tr>
+        <td>Название спутника</td>
+        <td>Время выхода из-за горизонта</td>
+        <td>Время захода за горизонт</td>
+        <td>Кульминация (в градусах)</td>
+        <td>Скачать файл с траекторией</td>
+    </tr>
+    {% for pass in passes %}
+    <tr class="{{ 'highlighted' if pass[4] else '' }}" data-satellite="{{ pass[0] }}" data-start="{{ pass[1] }}"
+        data-end="{{ pass[2] }}" data-lon="{{ lon }}" data-lat="{{ lat }}" data-alt="{{ alt }}">
+        <td>{{ pass[0] }}</td>
+        <td>{{ pass[1] }}</td>
+        <td>{{ pass[2] }}</td>
+        <td>{{ pass[3] }}</td>
+        <td>
+            <button class="download-button">Скачать</button>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const downloadButtons = document.querySelectorAll('.download-button');
+
+        downloadButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const row = button.closest('tr');
+                const satellite = row.getAttribute('data-satellite');
+                const start = row.getAttribute('data-start');
+                const end = row.getAttribute('data-end');
+                const lon = row.getAttribute('data-lon');
+                const lat = row.getAttribute('data-lat');
+                const alt = row.getAttribute('data-alt');
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/download_trajectory', true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.onload = function () {
+                    if (xhr.status === 200) {
+                        const link = document.createElement('a');
+                        link.href = window.URL.createObjectURL(new Blob([xhr.responseText]));
+
+                        link.setAttribute('download', 'Траектория.txt');
+                        link.style.display = 'none';
+
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }
+                };
+                xhr.send(JSON.stringify({
+                    satellite: satellite,
+                    start: start,
+                    end: end,
+                    lon: lon,
+                    lat: lat,
+                    alt: alt,
+                }));
+            });
+        });
+    });
+</script>
+
+</body>
+</html>
